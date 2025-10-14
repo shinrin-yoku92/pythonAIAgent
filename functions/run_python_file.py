@@ -1,16 +1,24 @@
 import os
 import subprocess
+from google.genai import types
 
 
-def run_python_file(working_directory, file_path, args=[]):
+def run_python_file(working_directory, file_path, args=None):
+    if args is None:
+        args = []
     abs_working_dir = os.path.abspath(working_directory)
     abs_file_path = os.path.abspath(os.path.join(working_directory, file_path))
+
+    # Prevent escaping the working directory
     if not abs_file_path.startswith(abs_working_dir):
         return f'Error: Cannot execute "{file_path}" as it is outside the permitted working directory'
+
     if not os.path.exists(abs_file_path):
         return f'Error: File "{file_path}" not found'
+
     if not abs_file_path.endswith(".py"):
         return f'Error: "{file_path}" is not a Python file.'
+
     try:
         result = subprocess.run(
             ["python3", abs_file_path] + args,
@@ -27,9 +35,31 @@ def run_python_file(working_directory, file_path, args=[]):
         if result.returncode != 0:
             return output + f'\nProcess exited with code {result.returncode}'
         return output
-        
+
     except subprocess.TimeoutExpired:
         return f'Error: Execution of "{file_path}" timed out'
     except Exception as e:
         return f'Error executing "{file_path}": {e}'
-    
+
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Executes a Python file in the specified working directory.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The path to the file to run, relative to the working directory.",
+            ),
+            "args": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(
+                    type=types.Type.STRING,
+                    description="Arguments to pass to the Python script.",
+                ),
+                description="Arguments to pass to the Python script.",
+            ),
+        },
+    ),
+)
